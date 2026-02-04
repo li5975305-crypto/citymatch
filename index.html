@@ -191,6 +191,10 @@
         document.getElementById('result-page').style.display = 'block';
         
         const userArr = Object.values(userScores);
+        // 找出用户最高得分，用于动态设置雷达图上限，防止溢出
+        const maxUserScore = Math.max(...userArr);
+        const chartMax = maxUserScore > 15 ? maxUserScore + 5 : 20;
+
         let results = [];
         for (let name in cityData) {
             let dist = 0;
@@ -199,6 +203,64 @@
             });
             results.push({ name, dist, data: cityData[name] });
         }
+        results.sort((a, b) => a.dist - b.dist);
+
+        const best = results[0];
+        const matchVal = Math.max(88, Math.min(99, 100 - (best.dist / 5))).toFixed(1);
+
+        document.getElementById('res-city-name').innerText = best.name;
+        document.getElementById('res-match-val').innerText = `匹配度 ${matchVal}%`;
+        document.getElementById('res-tags').innerHTML = best.data.tags.map(t => `<span class="tag">#${t}</span>`).join('');
+        document.getElementById('res-keywords').innerHTML = `
+            <p><strong>🧠 灵魂画像：</strong>${best.data.pTags.join(' · ')}</p>
+            <p><strong>🌆 城市基因：</strong>${best.data.tags.join(' · ')}</p>
+        `;
+        document.getElementById('res-desc').innerText = best.data.desc;
+        document.getElementById('res-backup').innerText = `备选推荐：${results[1].name}、${results[2].name}`;
+
+        // 绘制双层雷达图
+        const ctx = document.getElementById('radarChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: ['搞钱', '松弛', '开放', '烟火', '环境', '安稳'],
+                datasets: [
+                    {
+                        label: '你的灵魂画像',
+                        data: userArr,
+                        backgroundColor: 'rgba(33, 158, 188, 0.4)',
+                        borderColor: '#219ebc',
+                        pointBackgroundColor: '#219ebc',
+                        borderWidth: 2
+                    },
+                    {
+                        label: `${best.name}基因`,
+                        data: best.data.scores,
+                        backgroundColor: 'rgba(200, 200, 200, 0.2)',
+                        borderColor: '#ccc',
+                        borderDash: [5, 5],
+                        pointBackgroundColor: '#999',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                // 增加内边距，给外围文字留空间
+                layout: { padding: { top: 10, bottom: 10 } },
+                scales: { 
+                    r: { 
+                        min: 0, 
+                        max: chartMax, // 使用动态计算的最大值
+                        ticks: { display: false },
+                        grid: { color: 'rgba(0,0,0,0.05)' },
+                        angleLines: { color: 'rgba(0,0,0,0.05)' },
+                        pointLabels: { font: { size: 12 } } // 调整标签文字大小
+                    } 
+                },
+                plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 12 } } }
+            }
+        });
+    }
         results.sort((a, b) => a.dist - b.dist);
 
         const best = results[0];
